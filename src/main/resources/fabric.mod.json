@@ -8,7 +8,7 @@
     "GZ_Sakura"
   ],
   "contact": {},
-  "license": "All-Rights-Reserved",
+  "license": "GPL-3.0-or-later",
   "icon": "assets/eliminate/icon.jpg",
   "environment": "client",
   "entrypoints": {
