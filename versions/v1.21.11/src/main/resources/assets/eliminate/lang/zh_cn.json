@@ -9,5 +9,6 @@
   "hud.eliminate.vert": "垂直剔除: %d",
   "hud.eliminate.y_info": "Y: %d (地表: %d)",
   "hud.eliminate.underground": "地下状态: %b",
-  "hud.eliminate.disabled": "已禁用"
+  "hud.eliminate.disabled": "已禁用",
+  "hud.eliminate.actionbar": "剔除统计: 总计 %d | 背面 %s | 垂直 %d | Y: %d (地表 %d) | 地下: %b"
 }

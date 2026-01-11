@@ -10,8 +10,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.resource.language.I18n;
 import net.minecraft.client.util.Window;
-import net.minecraft.text.Text;
 
 import java.awt.Color;
 
@@ -19,8 +19,20 @@ public class SkiaHudRenderer implements HudRenderCallback {
 
     private int lastWidth = -1;
     private int lastHeight = -1;
-    private final Font font = new Font(Typeface.makeDefault(), 20);
-    private final Color textColor = new Color(255, 255, 0);
+    private final Font font;
+
+    public SkiaHudRenderer() {
+        Typeface typeface;
+        // Try to load a font that supports Chinese on Windows
+        typeface = Typeface.makeFromName("Microsoft YaHei", io.github.humbleui.skija.FontStyle.NORMAL);
+        if (typeface == null) {
+            typeface = Typeface.makeFromName("SimSun", io.github.humbleui.skija.FontStyle.NORMAL);
+        }
+        if (typeface == null) {
+            typeface = Typeface.makeDefault();
+        }
+        this.font = new Font(typeface, SkiaStyles.FONT_SIZE);
+    }
 
     @Override
     public void onHudRender(DrawContext drawContext, RenderTickCounter tickCounter) {
@@ -52,33 +64,33 @@ public class SkiaHudRenderer implements HudRenderCallback {
     }
 
     private void drawStats(MinecraftClient client) {
-        float x = 20;
-        float y = 50;
-        float lineHeight = 25;
+        float x = SkiaStyles.STATS_X;
+        float y = SkiaStyles.STATS_Y;
+        float lineHeight = SkiaStyles.LINE_HEIGHT;
 
-        String disabledStr = Text.translatable("hud.eliminate.disabled").getString();
+        String disabledStr = I18n.translate("hud.eliminate.disabled");
         String backStatus = Math.abs(client.player.getRotationVec(1.0F).y) > 0.5 ? disabledStr : String.valueOf(EliminateClient.CULLED_BACK);
 
         String[] lines = {
-            Text.translatable("hud.eliminate.total", EliminateClient.TOTAL_CHECKED).getString(),
-            Text.translatable("hud.eliminate.back", backStatus).getString(),
-            Text.translatable("hud.eliminate.vert", EliminateClient.CULLED_VERTICAL).getString(),
-            Text.translatable("hud.eliminate.y_info", (int)client.player.getY(), EliminateClient.debugCachedSurfaceY).getString(),
-            Text.translatable("hud.eliminate.underground", EliminateClient.debugCachedUnderground).getString()
+            I18n.translate("hud.eliminate.total", EliminateClient.TOTAL_CHECKED),
+            I18n.translate("hud.eliminate.back", backStatus),
+            I18n.translate("hud.eliminate.vert", EliminateClient.CULLED_VERTICAL),
+            I18n.translate("hud.eliminate.y_info", (int)client.player.getY(), EliminateClient.debugCachedSurfaceY),
+            I18n.translate("hud.eliminate.underground", EliminateClient.debugCachedUnderground)
         };
 
         for (String line : lines) {
-            Skia.drawText(line, x, y, textColor, font);
+            Skia.drawText(line, x, y, SkiaStyles.TEXT_COLOR, font);
             y += lineHeight;
         }
     }
 
     private void drawPlayer(MinecraftClient client) {
-        float x = 20;
-        float y = 180;
-        float size = 32;
+        float x = SkiaStyles.PLAYER_X;
+        float y = SkiaStyles.PLAYER_Y;
+        float size = SkiaStyles.PLAYER_HEAD_SIZE;
         
         Skia.drawPlayerHead(client.player, x, y, size, size, 4);
-        Skia.drawSkin(client.player, x + 50, y, 2.0f);
+        Skia.drawSkin(client.player, x + 50, y, SkiaStyles.SKIN_SCALE);
     }
 }

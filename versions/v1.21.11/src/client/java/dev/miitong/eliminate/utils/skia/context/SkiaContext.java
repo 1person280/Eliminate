@@ -1,5 +1,6 @@
 package dev.miitong.eliminate.utils.skia.context;
 
+import dev.miitong.eliminate.utils.skia.Skia;
 import io.github.humbleui.skija.Canvas;
 import io.github.humbleui.skija.ColorAlphaType;
 import io.github.humbleui.skija.ColorInfo;
@@ -25,7 +26,9 @@ public class SkiaContext {
     public static void draw(Consumer<Canvas> callback) {
         if (canvas != null) {
             canvas.clear(0);
+            Skia.setCanvas(canvas);
             callback.accept(canvas);
+            Skia.setCanvas(null);
         }
     }
 

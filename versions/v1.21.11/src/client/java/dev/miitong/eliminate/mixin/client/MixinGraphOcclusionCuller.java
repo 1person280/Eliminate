@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = "net.caffeinemc.mods.sodium.client.render.chunk.occlusion.GraphOcclusionCuller", remap = false)
+@Mixin(targets = "net.caffeinemc.mods.sodium.client.render.chunk.occlusion.OcclusionCuller", remap = false)
 public class MixinGraphOcclusionCuller {
 
     @Unique
@@ -28,7 +28,7 @@ public class MixinGraphOcclusionCuller {
     private static final java.util.HashMap<Long, Integer> cachedHeights = new java.util.HashMap<>();
     
     @Unique
-    private int getReliableSurfaceY(net.minecraft.client.world.ClientWorld world, int x, int z) {
+    private static int getReliableSurfaceY(net.minecraft.client.world.ClientWorld world, int x, int z) {
         // Force scan from world top to ensure we find the true surface
         // Check if chunk is loaded first to avoid scanning void
         if (world.getChunk(x >> 4, z >> 4, net.minecraft.world.chunk.ChunkStatus.FULL, false) == null) {
@@ -57,12 +57,15 @@ public class MixinGraphOcclusionCuller {
         return bottomY;
     }
 
-    @Inject(method = "isOccluded", at = @At("HEAD"), cancellable = true)
-    public void onIsOccluded(int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
+    @Inject(method = "isWithinFrustum", at = @At("HEAD"), cancellable = true)
+    private static void onIsWithinFrustum(net.caffeinemc.mods.sodium.client.render.viewport.Viewport viewport, net.caffeinemc.mods.sodium.client.render.chunk.RenderSection section, CallbackInfoReturnable<Boolean> cir) {
         EliminateConfig config = EliminateConfig.getInstance();
         if (!config.enabled) return;
 
-        // Logic ported from MixinOctreeLeaf
+        int x = section.getChunkX();
+        int y = section.getChunkY();
+        int z = section.getChunkZ();
+
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
         
@@ -90,7 +93,7 @@ public class MixinGraphOcclusionCuller {
         int currentSurfaceY = cachedPlayerSurfaceY;
         boolean isUnderground = cachedPlayerUnderground;
 
-        // Reconstruct Box
+        // Reconstruct Box for distance checks
         double minX = x * 16.0;
         double minY = y * 16.0;
         double minZ = z * 16.0;
@@ -102,7 +105,6 @@ public class MixinGraphOcclusionCuller {
 
         // Back Culling
         Vec3d look = client.player.getRotationVec(1.0F);
-        // Using the safe 0.5 threshold
         if (Math.abs(look.y) <= 0.5) {
             double forwardX = look.x;
             double forwardZ = look.z;
@@ -122,7 +124,7 @@ public class MixinGraphOcclusionCuller {
                         EliminateClient.CULLED_COUNT++;
                         EliminateClient.CULLED_BACK++;
                     }
-                    cir.setReturnValue(true); // Occluded -> Cull
+                    cir.setReturnValue(false); // Occluded/Out -> return false for isWithinFrustum
                     return;
                 }
             }
@@ -181,7 +183,7 @@ public class MixinGraphOcclusionCuller {
                 EliminateClient.CULLED_COUNT++;
                 EliminateClient.CULLED_VERTICAL++;
             }
-            cir.setReturnValue(true);
+            cir.setReturnValue(false); // Culled -> Not within frustum
         }
     }
 }

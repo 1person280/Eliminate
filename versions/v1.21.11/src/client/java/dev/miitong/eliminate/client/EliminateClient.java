@@ -75,16 +75,17 @@ public class EliminateClient implements ClientModInitializer {
             if (EliminateConfig.getInstance().debugMode && client.player != null) {
                 tickCounter++;
                 if (tickCounter >= 20) {
-                    float pitch = client.player.getPitch();
-                    String backStatus = Math.abs(client.player.getRotationVec(1.0F).y) > 0.5 ? "Disabled" : String.valueOf(CULLED_BACK);
+                    String disabledStr = Text.translatable("hud.eliminate.disabled").getString();
+                    String backStatus = Math.abs(client.player.getRotationVec(1.0F).y) > 0.5 ? disabledStr : String.valueOf(CULLED_BACK);
                     
-                    String message = String.format("Eliminate: Total %d | Back %s | Vert %d | Y: %d (Surf: %d) | Under: %b | Pitch: %.2f", 
+                    Text actionBarText = Text.translatable("hud.eliminate.actionbar", 
                         TOTAL_CHECKED, backStatus, CULLED_VERTICAL, 
-                        (int)client.player.getY(), debugCachedSurfaceY, debugCachedUnderground, pitch);
+                        (int)client.player.getY(), debugCachedSurfaceY, debugCachedUnderground)
+                        .formatted(Formatting.YELLOW);
                     
-                    client.player.sendMessage(Text.literal(message).formatted(Formatting.YELLOW), true);
+                    client.player.sendMessage(actionBarText, true);
                     
-                    LOGGER.info(message);
+                    LOGGER.info(actionBarText.getString());
                     
                     tickCounter = 0;
                     CULLED_COUNT = 0;
