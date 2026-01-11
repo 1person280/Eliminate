@@ -25,21 +25,15 @@ public class MixinOctreeLeaf {
         if (client.player == null) return;
 
         double cameraY = client.player.getEyeY();
-        // Smart Culling Logic
-        // We use the world heightmap to distinguish between "Caves" and "Surface".
-        
+
         Box box = this.chunk.getBoundingBox();
 
-        // Optimization: Fast fail for chunks way above the player (Sky)
-        // Reduced threshold from 64 to 32 for more aggressive culling
         if (box.minY > cameraY + 32.0) {
             if (EliminateClient.DEBUG) EliminateClient.CULLED_COUNT++;
             ci.cancel();
             return;
         }
 
-        // Sample 5 points (Center + 4 Corners) to get the true lowest surface height in this chunk.
-        // This prevents "holes" on cliffs and allows us to use a tighter safety buffer.
         int minX = (int) box.minX;
         int maxX = (int) box.maxX;
         int minZ = (int) box.minZ;
@@ -57,22 +51,13 @@ public class MixinOctreeLeaf {
         boolean shouldCull = false;
 
         if (playerY >= surfaceY - 5) {
-            // Mode 1: Surface / Flying
-            // Cull deep caves. 
-            // Since we found the MINIMUM surface height, we can be aggressive.
-            // Buffer reduced from 16 to 8 blocks.
             if (box.maxY < surfaceY - 8) {
                 shouldCull = true;
             }
         } else {
-            // Mode 2: Underground / Caving
-            // Cull surface (chunks well above player)
-            // Reduced threshold from 32 to 24
             if (box.minY > playerY + 24) {
                 shouldCull = true;
             }
-            // Cull deep void (chunks well below player)
-            // Reduced threshold from 32 to 24
             if (box.maxY < playerY - 24) {
                 shouldCull = true;
             }
