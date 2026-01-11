@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.miitong.eliminate.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "MixinOctreeBranch",
+    "MixinOctreeLeaf",
+    "MixinClientPlayNetworkHandler"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
