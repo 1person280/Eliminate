@@ -24,7 +24,7 @@ public class MixinGraphOcclusionCuller {
         double minX = x * 16.0;
         double minY = y * 16.0;
         double minZ = z * 16.0;
-        Box box = new Box(minX, minY, minZ, minX + 16.0, minY + 16.0, minZ + 16.0);
+        Box box = CullingUtils.getCachedBox(minX, minY, minZ, minX + 16.0, minY + 16.0, minZ + 16.0);
 
         if (CullingUtils.shouldCull(box, x, y, z)) {
             cir.setReturnValue(false);

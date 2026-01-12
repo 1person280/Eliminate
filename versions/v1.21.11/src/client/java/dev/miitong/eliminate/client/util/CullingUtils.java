@@ -2,8 +2,10 @@ package dev.miitong.eliminate.client.util;
 
 import dev.miitong.eliminate.client.EliminateClient;
 import dev.miitong.eliminate.config.EliminateConfig;
-import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import dev.miitong.eliminate.client.util.AsyncTaskManager;
+import it.unimi.dsi.fastutil.longs.Long2BooleanLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
@@ -15,13 +17,15 @@ import net.minecraft.world.chunk.ChunkStatus;
 
 public class CullingUtils {
     private static ClientWorld cachedWorld;
-    private static final Long2IntOpenHashMap cachedHeights = new Long2IntOpenHashMap();
-    private static final Long2BooleanOpenHashMap cachedTransparency = new Long2BooleanOpenHashMap();
+    private static final Long2IntLinkedOpenHashMap cachedHeights = new Long2IntLinkedOpenHashMap();
+    private static final Long2BooleanLinkedOpenHashMap cachedTransparency = new Long2BooleanLinkedOpenHashMap();
+    private static final int MAX_CACHE_SIZE = 1024;
     private static long lastCacheTime = -1;
     private static int cachedPlayerSurfaceY;
     private static int cachedPlayerCeilingY;
     private static boolean cachedPlayerUnderground;
     private static boolean isNether;
+    private static boolean isEnd;
     private static double fovCosineThreshold;
 
     static {
@@ -33,6 +37,13 @@ public class CullingUtils {
         cachedTransparency.clear();
         cachedWorld = null;
         lastCacheTime = -1;
+    }
+
+    /**
+     * Get a cached Box instance to avoid object creation
+     */
+    public static Box getCachedBox(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+        return new Box(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
     public static boolean shouldCull(Box box, int chunkX, int chunkY, int chunkZ) {
@@ -60,7 +71,9 @@ public class CullingUtils {
             if (cachedWorld != client.world) {
                 resetCache();
                 cachedWorld = client.world;
-                isNether = client.world.getRegistryKey().getValue().getPath().contains("nether");
+                String dimensionPath = client.world.getRegistryKey().getValue().getPath();
+                isNether = dimensionPath.contains("nether");
+                isEnd = dimensionPath.contains("end");
             }
             lastCacheTime = currentTime;
             int playerX = MathHelper.floor(client.player.getX());
@@ -75,12 +88,24 @@ public class CullingUtils {
             // Calculate FOV threshold: 
             // Default FOV is usually 70. We add a 20-degree safety margin.
             double fov = client.options.getFov().getValue();
+            // Consider dynamic FOV
+            if (client.player.isSprinting()) {
+                fov *= 1.1; // Sprinting increases FOV by 10%
+            }
             double halfFovRad = Math.toRadians((fov + 20) / 2.0);
             fovCosineThreshold = Math.cos(halfFovRad);
 
             if (config.debugMode) {
                 EliminateClient.debugCachedSurfaceY = cachedPlayerSurfaceY;
                 EliminateClient.debugCachedUnderground = cachedPlayerUnderground;
+            }
+            
+            // Pre-calculate nearby chunks in background
+            if (config.preCalculateChunks) {
+                int playerChunkX = playerX >> 4;
+                int playerChunkZ = playerZ >> 4;
+                int radius = Math.max(1, Math.min(16, config.preCalculateRadius)); // Limit radius between 1-16
+                preCalculateNearbyChunks(client.world, playerChunkX, playerChunkZ, radius);
             }
         }
 
@@ -98,19 +123,36 @@ public class CullingUtils {
         // 2. FOV Culling
         if (config.fovCullingEnabled) {
             Vec3d look = client.player.getRotationVec(1.0F);
-            Vec3d toBox = box.getCenter().subtract(cameraX, cameraY, cameraZ).normalize();
-            double dot = look.dotProduct(toBox);
+            // Calculate center manually to avoid creating temporary Vec3d
+            double centerX = (box.minX + box.maxX) * 0.5;
+            double centerY = (box.minY + box.maxY) * 0.5;
+            double centerZ = (box.minZ + box.maxZ) * 0.5;
             
-            if (dot < fovCosineThreshold) {
-                double distSq = box.getCenter().squaredDistanceTo(cameraX, cameraY, cameraZ);
-                if (distSq > 256) {
-                    if (config.debugMode) {
-                        EliminateClient.CULLED_COUNT++;
-                        EliminateClient.CULLED_FOV++;
-                        EliminateClient.HUD_CULLED_COUNT++;
-                        EliminateClient.HUD_CULLED_FOV++;
+            // Calculate vector to box center and normalize
+            double dx = centerX - cameraX;
+            double dy = centerY - cameraY;
+            double dz = centerZ - cameraZ;
+            double lengthSq = dx * dx + dy * dy + dz * dz;
+            double length = Math.sqrt(lengthSq);
+            if (length > 0) {
+                double normDx = dx / length;
+                double normDy = dy / length;
+                double normDz = dz / length;
+                
+                // Calculate dot product manually
+                double dot = look.x * normDx + look.y * normDy + look.z * normDz;
+                
+                if (dot < fovCosineThreshold) {
+                    // Use original squared distance
+                    if (lengthSq > 256) {
+                        if (config.debugMode) {
+                            EliminateClient.CULLED_COUNT++;
+                            EliminateClient.CULLED_FOV++;
+                            EliminateClient.HUD_CULLED_COUNT++;
+                            EliminateClient.HUD_CULLED_FOV++;
+                        }
+                        return true;
                     }
-                    return true;
                 }
             }
         }
@@ -132,7 +174,10 @@ public class CullingUtils {
                 int thickness = cachedPlayerSurfaceY - (int)cameraY;
                 if (thickness > 12) {
                     if (box.minY > (double) (cachedPlayerSurfaceY + 4)) {
-                        double horizontalDistSq = MathHelper.square(box.getCenter().x - cameraX) + MathHelper.square(box.getCenter().z - cameraZ);
+                        // Calculate center manually to avoid creating temporary Vec3d
+                        double centerX = (box.minX + box.maxX) * 0.5;
+                        double centerZ = (box.minZ + box.maxZ) * 0.5;
+                        double horizontalDistSq = MathHelper.square(centerX - cameraX) + MathHelper.square(centerZ - cameraZ);
                         if (horizontalDistSq > 1024) {
                             if (config.debugMode) {
                                 EliminateClient.CULLED_COUNT++;
@@ -149,10 +194,31 @@ public class CullingUtils {
 
         // 4. Standard Vertical Culling
         long key = (((long) chunkX) & 0xffffffffL) | ((((long) chunkZ) & 0xffffffffL) << 32);
+        // Move accessed entry to the end (most recently used)
+        cachedHeights.getAndMoveToLast(key);
         int surfaceY = cachedHeights.get(key);
         if (surfaceY == -1) {
+            if (config.debugMode) {
+                EliminateClient.CACHE_MISSES++;
+            }
             surfaceY = getReliableSurfaceY(client.world, (chunkX << 4) + 8, (chunkZ << 4) + 8);
             cachedHeights.put(key, surfaceY);
+            // Limit cache size - remove oldest entries if necessary
+            if (cachedHeights.size() > MAX_CACHE_SIZE) {
+                // Remove first entry using iterator
+                if (!cachedHeights.isEmpty()) {
+                    cachedHeights.remove(cachedHeights.keySet().iterator().next());
+                }
+            }
+        } else {
+            if (config.debugMode) {
+                EliminateClient.CACHE_HITS++;
+            }
+        }
+        
+        // Update cache size
+        if (config.debugMode) {
+            EliminateClient.CACHE_SIZE = cachedHeights.size() + cachedTransparency.size();
         }
 
         int cullingDist = config.cullingDistance;
@@ -167,6 +233,41 @@ public class CullingUtils {
                     EliminateClient.HUD_CULLED_VERTICAL++;
                 }
                 return true;
+            }
+            return false;
+        } else if (isEnd && config.endDimensionOptimization) {
+            // End specific: more aggressive culling for floating islands
+            double centerX = (box.minX + box.maxX) * 0.5;
+            double centerY = (box.minY + box.maxY) * 0.5;
+            double centerZ = (box.minZ + box.maxZ) * 0.5;
+            
+            double distSq = MathHelper.square(centerX - cameraX) + MathHelper.square(centerY - cameraY) + MathHelper.square(centerZ - cameraZ);
+            
+            // More aggressive distance-based culling for End
+            if (distSq > MathHelper.square(cullingDist + 48)) {
+                if (config.debugMode) {
+                    EliminateClient.CULLED_COUNT++;
+                    EliminateClient.CULLED_END++;
+                    EliminateClient.HUD_CULLED_COUNT++;
+                    EliminateClient.HUD_CULLED_END++;
+                }
+                return true;
+            }
+            
+            // Special culling for End: cull chunks that are too far vertically when not looking up/down
+            Vec3d look = client.player.getRotationVec(1.0F);
+            double verticalDot = Math.abs(look.y);
+            if (verticalDot < 0.3) { // Not looking up or down
+                double diffY = Math.abs(centerY - cameraY);
+                if (diffY > (double) (cullingDist + 24)) {
+                    if (config.debugMode) {
+                        EliminateClient.CULLED_COUNT++;
+                        EliminateClient.CULLED_END++;
+                        EliminateClient.HUD_CULLED_COUNT++;
+                        EliminateClient.HUD_CULLED_END++;
+                    }
+                    return true;
+                }
             }
             return false;
         }
@@ -208,7 +309,11 @@ public class CullingUtils {
 
     private static boolean isChunkTransparent(ClientWorld world, int cx, int cy, int cz) {
         long key = (((long) cx) & 0xffffffL) | ((((long) cy) & 0xffffffL) << 24) | ((((long) cz) & 0xffffffL) << 48);
-        if (cachedTransparency.containsKey(key)) return cachedTransparency.get(key);
+        if (cachedTransparency.containsKey(key)) {
+            // Move accessed entry to the end (most recently used)
+            cachedTransparency.getAndMoveToLast(key);
+            return cachedTransparency.get(key);
+        }
 
         Chunk chunk = world.getChunk(cx, cz, ChunkStatus.FULL, false);
         if (chunk == null) return false;
@@ -228,7 +333,9 @@ public class CullingUtils {
                 for (int z : samples) {
                     pos.set(startX + x, startY + y, startZ + z);
                     BlockState state = chunk.getBlockState(pos);
-                    if (state.isOf(Blocks.WATER) || state.isOf(Blocks.GLASS) || state.isOf(Blocks.ICE) || !state.isOpaque()) {
+                    if (state.isOf(Blocks.WATER) || state.isOf(Blocks.GLASS) || state.isOf(Blocks.ICE) || 
+                        state.isOf(Blocks.GLASS_PANE) || state.isOf(Blocks.SEA_LANTERN) || 
+                        state.isOf(Blocks.SLIME_BLOCK) || !state.isOpaque()) {
                         transparent = true;
                         break outer;
                     }
@@ -237,6 +344,13 @@ public class CullingUtils {
         }
 
         cachedTransparency.put(key, transparent);
+        // Limit cache size - remove oldest entries if necessary
+            if (cachedTransparency.size() > MAX_CACHE_SIZE) {
+                // Remove first entry using iterator
+                if (!cachedTransparency.isEmpty()) {
+                    cachedTransparency.remove(cachedTransparency.keySet().iterator().next());
+                }
+            }
         return transparent;
     }
 
@@ -245,7 +359,127 @@ public class CullingUtils {
              return world.getBottomY();
         }
 
-        // Use MOTION_BLOCKING heightmap for efficiency
-        return world.getTopY(Heightmap.Type.MOTION_BLOCKING, x, z);
+        // Smart surface detection algorithm
+        // First try MOTION_BLOCKING heightmap for efficiency
+        int motionBlockingY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, x, z);
+        
+        // Then verify with a more accurate check
+        int accurateY = findAccurateSurfaceY(world, x, z, motionBlockingY);
+        
+        // Use the higher value to ensure we don't miss any surface
+        return Math.max(motionBlockingY, accurateY);
+    }
+
+    /**
+     * Find more accurate surface Y by checking actual block states
+     */
+    private static int findAccurateSurfaceY(ClientWorld world, int x, int z, int startY) {
+        int maxY = world.getTopY(Heightmap.Type.WORLD_SURFACE, x, z);
+        int minY = world.getBottomY();
+        
+        // Start from the motion blocking height and check upwards
+        for (int y = startY; y <= maxY; y++) {
+            BlockState state = world.getBlockState(new BlockPos(x, y, z));
+            if (!state.isAir() && !state.isLiquid()) {
+                return y;
+            }
+        }
+        
+        // If no solid block found above, check below
+        for (int y = startY - 1; y >= minY; y--) {
+            BlockState state = world.getBlockState(new BlockPos(x, y, z));
+            if (!state.isAir() && !state.isLiquid()) {
+                return y;
+            }
+        }
+        
+        return startY;
+    }
+
+    /**
+     * Pre-calculate surface heights and transparency for nearby chunks in background threads
+     */
+    private static void preCalculateNearbyChunks(ClientWorld world, int centerX, int centerZ, int radius) {
+        AsyncTaskManager.submit(() -> {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (dx * dx + dz * dz > radius * radius) continue;
+                    
+                    final int chunkX = centerX + dx;
+                    final int chunkZ = centerZ + dz;
+                    
+                    // Pre-calculate surface height
+                    long heightKey = (((long) chunkX) & 0xffffffffL) | ((((long) chunkZ) & 0xffffffffL) << 32);
+                    if (!cachedHeights.containsKey(heightKey)) {
+                        int surfaceY = getReliableSurfaceY(world, (chunkX << 4) + 8, (chunkZ << 4) + 8);
+                        synchronized (cachedHeights) {
+                            if (!cachedHeights.containsKey(heightKey)) {
+                                cachedHeights.put(heightKey, surfaceY);
+                                // Limit cache size
+                                if (cachedHeights.size() > MAX_CACHE_SIZE) {
+                                    // Remove first entry using iterator
+                                    if (!cachedHeights.isEmpty()) {
+                                        cachedHeights.remove(cachedHeights.keySet().iterator().next());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Pre-calculate transparency for a few Y levels
+                    for (int cy = 0; cy < 16; cy++) {
+                        long transKey = (((long) chunkX) & 0xffffffL) | ((((long) cy) & 0xffffffL) << 24) | ((((long) chunkZ) & 0xffffffL) << 48);
+                        if (!cachedTransparency.containsKey(transKey)) {
+                            boolean transparent = isChunkTransparentImpl(world, chunkX, cy, chunkZ);
+                            synchronized (cachedTransparency) {
+                                if (!cachedTransparency.containsKey(transKey)) {
+                                    cachedTransparency.put(transKey, transparent);
+                                    // Limit cache size
+                                    if (cachedTransparency.size() > MAX_CACHE_SIZE) {
+                                        // Remove first entry using iterator
+                                        if (!cachedTransparency.isEmpty()) {
+                                            cachedTransparency.remove(cachedTransparency.keySet().iterator().next());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Internal implementation of isChunkTransparent without cache management
+     */
+    private static boolean isChunkTransparentImpl(ClientWorld world, int cx, int cy, int cz) {
+        Chunk chunk = world.getChunk(cx, cz, ChunkStatus.FULL, false);
+        if (chunk == null) return false;
+
+        boolean transparent = false;
+        int startX = cx << 4;
+        int startY = cy << 4;
+        int startZ = cz << 4;
+
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        int[] samples = {0, 8, 15};
+        outer:
+        for (int x : samples) {
+            for (int y : samples) {
+                for (int z : samples) {
+                    pos.set(startX + x, startY + y, startZ + z);
+                    BlockState state = chunk.getBlockState(pos);
+                    if (state.isOf(Blocks.WATER) || state.isOf(Blocks.GLASS) || state.isOf(Blocks.ICE) || 
+                        state.isOf(Blocks.GLASS_PANE) || state.isOf(Blocks.SEA_LANTERN) || 
+                        state.isOf(Blocks.SLIME_BLOCK) || !state.isOpaque()) {
+                        transparent = true;
+                        break outer;
+                    }
+                }
+            }
+        }
+
+        return transparent;
     }
 }

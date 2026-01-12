@@ -21,6 +21,11 @@ public class EliminateConfig {
     public boolean fovCullingEnabled = true;
     public boolean aggressiveMountainCulling = true;
     public boolean transparencyAwareness = true;
+    public boolean endDimensionOptimization = true;
+    public boolean autoOptimize = false;
+    public int threadPoolSize = -1; // -1 means auto-detect
+    public boolean preCalculateChunks = true;
+    public int preCalculateRadius = 8;
 
     private static EliminateConfig instance;
 
