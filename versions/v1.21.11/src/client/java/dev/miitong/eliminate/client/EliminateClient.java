@@ -20,6 +20,12 @@ public class EliminateClient implements ClientModInitializer {
     public static int CULLED_BACK = 0;
     public static int TOTAL_CHECKED = 0;
 
+    // HUD specific counters to avoid conflict with tick-based action bar
+    public static int HUD_CULLED_COUNT = 0;
+    public static int HUD_CULLED_VERTICAL = 0;
+    public static int HUD_CULLED_BACK = 0;
+    public static int HUD_TOTAL_CHECKED = 0;
+
     public static boolean debugCachedUnderground = false;
     public static int debugCachedSurfaceY = 0;
 
@@ -98,6 +104,10 @@ public class EliminateClient implements ClientModInitializer {
                 CULLED_BACK = 0;
                 CULLED_VERTICAL = 0;
                 TOTAL_CHECKED = 0;
+                HUD_CULLED_COUNT = 0;
+                HUD_CULLED_BACK = 0;
+                HUD_CULLED_VERTICAL = 0;
+                HUD_TOTAL_CHECKED = 0;
             }
         });
     }

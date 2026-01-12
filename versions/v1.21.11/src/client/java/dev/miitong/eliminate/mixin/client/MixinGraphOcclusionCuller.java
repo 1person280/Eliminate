@@ -72,7 +72,12 @@ public class MixinGraphOcclusionCuller {
         // Disable culling during shadow pass to prevent shadow artifacts
         if (EliminateClient.isRenderingShadowPass()) return;
         
-        if (config.debugMode) EliminateClient.TOTAL_CHECKED++;
+        if (config.debugMode) {
+            EliminateClient.TOTAL_CHECKED++;
+            EliminateClient.HUD_TOTAL_CHECKED++;
+            EliminateClient.debugCachedSurfaceY = cachedPlayerSurfaceY;
+            EliminateClient.debugCachedUnderground = cachedPlayerUnderground;
+        }
 
         if (cachedWorld != client.world) {
             cachedWorld = client.world;
@@ -123,6 +128,8 @@ public class MixinGraphOcclusionCuller {
                     if (config.debugMode) {
                         EliminateClient.CULLED_COUNT++;
                         EliminateClient.CULLED_BACK++;
+                        EliminateClient.HUD_CULLED_COUNT++;
+                        EliminateClient.HUD_CULLED_BACK++;
                     }
                     cir.setReturnValue(false); // Occluded/Out -> return false for isWithinFrustum
                     return;
@@ -162,11 +169,6 @@ public class MixinGraphOcclusionCuller {
             floorY = (short) ((packed >>> 16) & 0xffff);
         }
 
-        if (config.debugMode) {
-             EliminateClient.debugCachedSurfaceY = currentSurfaceY;
-             EliminateClient.debugCachedUnderground = isUnderground;
-        }
-
         int cullingDist = config.cullingDistance;
         int cutoffY = floorY - cullingDist;
         boolean shouldCull;
@@ -182,6 +184,8 @@ public class MixinGraphOcclusionCuller {
             if (config.debugMode) {
                 EliminateClient.CULLED_COUNT++;
                 EliminateClient.CULLED_VERTICAL++;
+                EliminateClient.HUD_CULLED_COUNT++;
+                EliminateClient.HUD_CULLED_VERTICAL++;
             }
             cir.setReturnValue(false); // Culled -> Not within frustum
         }
