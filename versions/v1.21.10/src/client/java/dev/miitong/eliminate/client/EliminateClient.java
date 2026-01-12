@@ -20,6 +20,11 @@ public class EliminateClient implements ClientModInitializer {
     public static int CULLED_BACK = 0;
     public static int TOTAL_CHECKED = 0;
 
+    public static int HUD_CULLED_COUNT = 0;
+    public static int HUD_CULLED_VERTICAL = 0;
+    public static int HUD_CULLED_BACK = 0;
+    public static int HUD_TOTAL_CHECKED = 0;
+
     public static boolean debugCachedUnderground = false;
     public static int debugCachedSurfaceY = 0;
 
@@ -38,7 +43,6 @@ public class EliminateClient implements ClientModInitializer {
             cachedShadowPass = queryIrisShadowPass();
             return cachedShadowPass;
         }
-
         cachedShadowFrameIndex = frameIndex;
         cachedShadowPass = queryIrisShadowPass();
         return cachedShadowPass;
@@ -75,16 +79,19 @@ public class EliminateClient implements ClientModInitializer {
             if (EliminateConfig.getInstance().debugMode && client.player != null) {
                 tickCounter++;
                 if (tickCounter >= 20) {
-                    float pitch = client.player.getPitch();
-                    String backStatus = Math.abs(client.player.getRotationVec(1.0F).y) > 0.5 ? "Disabled" : String.valueOf(CULLED_BACK);
+                    String disabledStr = Text.translatable("hud.eliminate.disabled").getString();
+                    String backStatus = Math.abs(client.player.getRotationVec(1.0F).y) > 0.5 ? disabledStr : String.valueOf(CULLED_BACK);
                     
-                    String message = String.format("Eliminate: Total %d | Back %s | Vert %d | Y: %d (Surf: %d) | Under: %b | Pitch: %.2f", 
-                        TOTAL_CHECKED, backStatus, CULLED_VERTICAL, 
-                        (int)client.player.getY(), debugCachedSurfaceY, debugCachedUnderground, pitch);
-                    
-                    client.player.sendMessage(Text.literal(message).formatted(Formatting.YELLOW), true);
-                    
-                    LOGGER.info(message);
+                    String text = Text.translatable("hud.eliminate.actionbar").getString() + 
+                        Text.translatable("hud.eliminate.total").getString() + TOTAL_CHECKED + " | " +
+                        Text.translatable("hud.eliminate.back").getString() + backStatus + " | " +
+                        Text.translatable("hud.eliminate.vert").getString() + CULLED_VERTICAL + " | " +
+                        Text.translatable("hud.eliminate.y_info").getString() + (int)client.player.getY() + " (Surf: " + debugCachedSurfaceY + ") | " +
+                        Text.translatable("hud.eliminate.underground").getString() + debugCachedUnderground;
+
+                    Text actionBarText = Text.literal(text).formatted(Formatting.YELLOW);
+                    client.player.sendMessage(actionBarText, true);
+                    LOGGER.info(actionBarText.getString());
                     
                     tickCounter = 0;
                     CULLED_COUNT = 0;
@@ -97,6 +104,10 @@ public class EliminateClient implements ClientModInitializer {
                 CULLED_BACK = 0;
                 CULLED_VERTICAL = 0;
                 TOTAL_CHECKED = 0;
+                HUD_CULLED_COUNT = 0;
+                HUD_CULLED_BACK = 0;
+                HUD_CULLED_VERTICAL = 0;
+                HUD_TOTAL_CHECKED = 0;
             }
         });
     }

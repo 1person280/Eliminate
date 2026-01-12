@@ -1,7 +1,19 @@
 {
   "config.eliminate.title": "Eliminate Configuration",
   "config.eliminate.category.general": "General Settings",
+  "config.eliminate.category.advanced": "Advanced Settings",
   "config.eliminate.option.enabled": "Enable Vertical Culling",
-  "config.eliminate.option.cullingDistance": "Vertical Culling Distance",
-  "config.eliminate.option.debugMode": "Debug Mode"
+  "config.eliminate.option.cullingDistance": "Vertical Culling Distance (Blocks)",
+  "config.eliminate.option.debugMode": "Debug Mode",
+  "config.eliminate.option.updateSpeed": "Update Frequency (Ticks)",
+  "config.eliminate.option.updateSpeed.tooltip": "Adjust the update cycle of surface height detection. Unit is Ticks (1s=20Ticks). Default 20 is update every tick.",
+  "config.eliminate.option.syncWithSodium": "Sync with Sodium",
+  "config.eliminate.option.syncWithSodium.tooltip": "When enabled, culling logic will sync with Sodium's occlusion query frame, providing more precise culling.",
+  "hud.eliminate.total": "Total: ",
+  "hud.eliminate.back": "Back: ",
+  "hud.eliminate.vert": "Vert: ",
+  "hud.eliminate.y_info": "Y: ",
+  "hud.eliminate.underground": "Underground: ",
+  "hud.eliminate.disabled": "Disabled",
+  "hud.eliminate.actionbar": "Culling Stats: "
 }

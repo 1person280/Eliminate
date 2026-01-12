@@ -27,13 +27,27 @@ public class ModMenuIntegration implements ModMenuApi {
                     .build());
 
             general.addEntry(entryBuilder.startIntSlider(Text.translatable("config.eliminate.option.cullingDistance"), config.cullingDistance, 0, 256)
-                    .setDefaultValue(64)
+                    .setDefaultValue(32)
                     .setSaveConsumer(newValue -> config.cullingDistance = newValue)
                     .build());
 
             general.addEntry(entryBuilder.startBooleanToggle(Text.translatable("config.eliminate.option.debugMode"), config.debugMode)
                     .setDefaultValue(false)
                     .setSaveConsumer(newValue -> config.debugMode = newValue)
+                    .build());
+
+            ConfigCategory advanced = builder.getOrCreateCategory(Text.translatable("config.eliminate.category.advanced"));
+            
+            advanced.addEntry(entryBuilder.startIntSlider(Text.translatable("config.eliminate.option.updateSpeed"), config.updateSpeed, 1, 20)
+                    .setDefaultValue(20)
+                    .setSaveConsumer(newValue -> config.updateSpeed = newValue)
+                    .setTooltip(Text.translatable("config.eliminate.option.updateSpeed.tooltip"))
+                    .build());
+
+            advanced.addEntry(entryBuilder.startBooleanToggle(Text.translatable("config.eliminate.option.syncWithSodium"), config.syncWithSodium)
+                    .setDefaultValue(false)
+                    .setSaveConsumer(newValue -> config.syncWithSodium = newValue)
+                    .setTooltip(Text.translatable("config.eliminate.option.syncWithSodium.tooltip"))
                     .build());
 
             builder.setSavingRunnable(EliminateConfig::save);

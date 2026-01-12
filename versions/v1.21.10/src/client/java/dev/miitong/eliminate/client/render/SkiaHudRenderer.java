@@ -10,6 +10,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.resource.language.I18n;
+import net.minecraft.text.Text;
 import net.minecraft.client.util.Window;
 
 import java.awt.Color;
@@ -18,8 +20,20 @@ public class SkiaHudRenderer implements HudRenderCallback {
 
     private int lastWidth = -1;
     private int lastHeight = -1;
-    private final Font font = new Font(Typeface.makeDefault(), 20);
-    private final Color textColor = new Color(255, 255, 0);
+    private final Font font;
+
+    public SkiaHudRenderer() {
+        Typeface typeface;
+        // Try to load a font that supports Chinese on Windows
+        typeface = Typeface.makeFromName("Microsoft YaHei", io.github.humbleui.skija.FontStyle.NORMAL);
+        if (typeface == null) {
+            typeface = Typeface.makeFromName("SimSun", io.github.humbleui.skija.FontStyle.NORMAL);
+        }
+        if (typeface == null) {
+            typeface = Typeface.makeDefault();
+        }
+        this.font = new Font(typeface, SkiaStyles.FONT_SIZE);
+    }
 
     @Override
     public void onHudRender(DrawContext drawContext, RenderTickCounter tickCounter) {
@@ -43,40 +57,41 @@ public class SkiaHudRenderer implements HudRenderCallback {
             drawPlayer(client);
         });
         
-        // Reset counters after rendering
-        EliminateClient.CULLED_COUNT = 0;
-        EliminateClient.CULLED_BACK = 0;
-        EliminateClient.CULLED_VERTICAL = 0;
-        EliminateClient.TOTAL_CHECKED = 0;
+        // Reset HUD counters after rendering
+        EliminateClient.HUD_CULLED_COUNT = 0;
+        EliminateClient.HUD_CULLED_BACK = 0;
+        EliminateClient.HUD_CULLED_VERTICAL = 0;
+        EliminateClient.HUD_TOTAL_CHECKED = 0;
     }
 
     private void drawStats(MinecraftClient client) {
-        float x = 20;
-        float y = 50;
-        float lineHeight = 25;
+        float x = SkiaStyles.STATS_X;
+        float y = SkiaStyles.STATS_Y;
+        float lineHeight = SkiaStyles.LINE_HEIGHT;
 
-        String backStatus = Math.abs(client.player.getRotationVec(1.0F).y) > 0.5 ? "Disabled" : String.valueOf(EliminateClient.CULLED_BACK);
+        String disabledStr = I18n.translate("hud.eliminate.disabled");
+        String backStatus = Math.abs(client.player.getRotationVec(1.0F).y) > 0.5 ? disabledStr : String.valueOf(EliminateClient.HUD_CULLED_BACK);
 
         String[] lines = {
-            String.format("Eliminate: Total %d", EliminateClient.TOTAL_CHECKED),
-            String.format("Back: %s", backStatus),
-            String.format("Vert: %d", EliminateClient.CULLED_VERTICAL),
-            String.format("Y: %d (Surf: %d)", (int)client.player.getY(), EliminateClient.debugCachedSurfaceY),
-            String.format("Under: %b", EliminateClient.debugCachedUnderground)
+            I18n.translate("hud.eliminate.total") + EliminateClient.HUD_TOTAL_CHECKED,
+            I18n.translate("hud.eliminate.back") + backStatus,
+            I18n.translate("hud.eliminate.vert") + EliminateClient.HUD_CULLED_VERTICAL,
+            I18n.translate("hud.eliminate.y_info") + (int)client.player.getY() + " (Surf: " + EliminateClient.debugCachedSurfaceY + ")",
+            I18n.translate("hud.eliminate.underground") + EliminateClient.debugCachedUnderground
         };
 
         for (String line : lines) {
-            Skia.drawText(line, x, y, textColor, font);
+            Skia.drawText(line, x, y, SkiaStyles.TEXT_COLOR, font);
             y += lineHeight;
         }
     }
 
     private void drawPlayer(MinecraftClient client) {
-        float x = 20;
-        float y = 180;
-        float size = 32;
+        float x = SkiaStyles.PLAYER_X;
+        float y = SkiaStyles.PLAYER_Y;
+        float size = SkiaStyles.PLAYER_HEAD_SIZE;
         
         Skia.drawPlayerHead(client.player, x, y, size, size, 4);
-        Skia.drawSkin(client.player, x + 50, y, 2.0f);
+        Skia.drawSkin(client.player, x + 50, y, SkiaStyles.SKIN_SCALE);
     }
 }
