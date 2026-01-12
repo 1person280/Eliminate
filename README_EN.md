@@ -1,38 +1,54 @@
-# Eliminate
+# Eliminate (beta.2)
 
-**Eliminate** is a lightweight Fabric mod designed to optimize rendering performance by culling unnecessary vertical chunks outside the player's field of view.
+简体中文 | English
 
-## Core Features
+**Eliminate** is a lightweight, high-performance optimization mod for Minecraft 1.21.x (Fabric). Unlike basic culling mods, Eliminate deeply integrates into the rendering pipeline to intelligently identify and skip chunks that are invisible to the player but still consume GPU resources, providing a significant boost to your FPS.
 
-- **Vertical Chunk Culling**: Automatically filters the rendering of chunks beyond a certain distance above or below the player, significantly reducing GPU load.
-- **High-Performance HUD**: Uses the Skia engine to render real-time statistics (culling counts, surface height, etc.).
-- **Configuration System**: Integrated with Cloth Config and Mod Menu, supporting in-game customization of culling distance, update frequency, and more.
-- **Broad Compatibility**: Fully compatible with Sodium and Iris (Shaders).
+## 🚀 Why Choose Eliminate?
 
-## Quick Start
+In vanilla Minecraft, the rendering engine often processes chunks even when they are completely obstructed by terrain or are far above/below the player's view. Eliminate introduces **Intelligent Vertical Culling** and advanced algorithms to eliminate these rendering redundancies in complex environments.
 
-1. Install [Fabric Loader](https://fabricmc.net/).
-2. Install dependencies: [Cloth Config API](https://modrinth.com/mod/cloth-config).
-3. Download the latest version of Eliminate (beta2).
-4. Place the `.jar` file into your `.minecraft/mods` folder.
+### 💎 Core Optimization Features
 
-## Supported Versions
+- **Vertical Chunk Culling**: Automatically culls chunks that are too high or too deep relative to the player's Y-level and the surface heightmap.
+- **Advanced FOV Culling**: Goes beyond simple back-face culling by dynamically calculating the view frustum based on your real-time FOV. It ensures precise filtering even for chunks beyond 16 blocks away.
+- **Aggressive Mountain & Underground Culling**: When you are deep underground, the mod identifies heavy terrain obstruction and culls irrelevant surface chunks.
+- **Nether-Specific Adaptation**: Recognizes the Nether dimension to cull invisible chunks above the bedrock ceiling and dynamically adjusts culling tolerances for open lava seas.
+- **Transparency-Aware System**: Automatically detects transparent blocks (water, glass, ice, etc.) within chunks to ensure peak performance without any visual flickering.
+- **Asynchronous Chunk Loading**: Offloads chunk parsing and NBT I/O to background threads with concurrency control and neighbor preloading, effectively eliminating "chunk stutters."
 
-- Minecraft 1.21.10
-- Minecraft 1.21.11
+### 🛠️ Technical Highlights
 
-## Building the Project
+- **High-Performance Stats**: Utilizes the **Skia (Skija)** engine for HUD rendering, displaying real-time culling statistics with near-zero overhead.
+- **Optimized Memory Management**: Core algorithms leverage **fastutil** primitive collections to drastically reduce GC pressure caused by autoboxing.
+- **Seamless Compatibility**: Built with **Sodium** and **Iris (Shaders)** in mind. Supports `Sync with Sodium` mode for zero-latency rendering updates.
 
-Prerequisites: JDK 21
+## 📦 Installation
 
-```bash
-# Build all versions
+1. Ensure you have the [Fabric Loader](https://fabricmc.net/) installed for the correct Minecraft version.
+2. Download and install the required dependency: [Cloth Config API](https://modrinth.com/mod/cloth-config).
+3. Place the `Eliminate-1.21.x-beta.2.jar` file into your `.minecraft/mods` directory.
+4. (Optional) Install [Mod Menu](https://modrinth.com/mod/modmenu) for an in-game configuration interface.
+
+## ⚙️ Building from Source
+
+This project uses a multi-project Gradle architecture and supports Windows/Server environments.
+
+**Prerequisites:**
+- JDK 21 or higher
+- It is recommended to set `GRADLE_USER_HOME` to a partition with ample space (e.g., Drive E).
+
+```powershell
+# Build all supported versions (1.21.10 & 1.21.11)
 .\gradlew.bat build
 
-# Build only version 1.21.11
+# Build a specific version
 .\gradlew.bat :versions:v1.21.11:build
 ```
 
-## License
+## 📜 License
 
 This project is licensed under the [GNU General Public License v3.0 (GPLv3)](LICENSE).
+
+---
+*Optimizing your vision, beyond just speed.*
