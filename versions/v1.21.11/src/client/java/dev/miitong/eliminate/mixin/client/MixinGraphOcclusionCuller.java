@@ -87,7 +87,8 @@ public class MixinGraphOcclusionCuller {
 
         // Cache player status per tick to avoid expensive surface scans
         long currentTime = client.world.getTime();
-        if (currentTime != lastCacheTime) {
+        int interval = Math.max(1, 21 - config.updateSpeed);
+        if (currentTime - lastCacheTime >= interval || lastCacheTime == -1) {
             lastCacheTime = currentTime;
             int playerX = MathHelper.floor(client.player.getX());
             int playerZ = MathHelper.floor(client.player.getZ());

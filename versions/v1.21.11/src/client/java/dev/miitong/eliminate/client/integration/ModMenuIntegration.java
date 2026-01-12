@@ -36,6 +36,14 @@ public class ModMenuIntegration implements ModMenuApi {
                     .setSaveConsumer(newValue -> config.debugMode = newValue)
                     .build());
 
+            ConfigCategory advanced = builder.getOrCreateCategory(Text.translatable("config.eliminate.category.advanced"));
+            
+            advanced.addEntry(entryBuilder.startIntSlider(Text.translatable("config.eliminate.option.updateSpeed"), config.updateSpeed, 1, 20)
+                    .setDefaultValue(10)
+                    .setSaveConsumer(newValue -> config.updateSpeed = newValue)
+                    .setTooltip(Text.translatable("config.eliminate.option.updateSpeed.tooltip"))
+                    .build());
+
             builder.setSavingRunnable(EliminateConfig::save);
 
             return builder.build();
