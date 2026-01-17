@@ -14,11 +14,11 @@ pluginManagement {
 
 rootProject.name = 'Eliminate'
 
-include 'versions:v1.21.1'
-include 'versions:v1.21.5'
-include 'versions:v1.21.10'
-include 'versions:v1.21.11'
-include 'versions:v1.20.1'
-include 'versions:neoforge'
-include 'versions:v1.20.1-neoforge'
+include 'versions:v1.21.1-fabric'
+include 'versions:v1.21.5-fabric'
+include 'versions:v1.21.10-fabric'
+include 'versions:v1.21.11-fabric'
+include 'neoforge'
+include 'versions:v1.21.1-neoforge'
 include 'versions:v1.21.5-neoforge'
+include 'fabric'
