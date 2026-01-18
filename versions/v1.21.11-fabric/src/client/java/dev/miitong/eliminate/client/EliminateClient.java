@@ -1,5 +1,6 @@
 package dev.miitong.eliminate.client;
 
+import dev.miitong.eliminate.client.integration.SodiumOptionsIntegration;
 import dev.miitong.eliminate.config.EliminateConfig;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -105,6 +106,9 @@ public class EliminateClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         EliminateConfig.load();
+        
+        // Initialize Sodium integration
+        SodiumOptionsIntegration.initialize();
         
         // Log compatibility information
         LOGGER.info("Eliminate initialized with compatibility checks:");
